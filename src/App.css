@@ -1,5 +1,9 @@
+/* General App Styles */
 .App {
   text-align: center;
+  font-family: 'Arial', sans-serif;
+  background-color: #f0f2f5; /* Light background color for a clean look */
+  padding: 20px;
 }
 
 .App-logo {
@@ -35,4 +39,255 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Table Styles */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  font-size: 1em;
+  font-family: 'Arial', sans-serif;
+  min-width: 400px;
+}
+
+table thead tr {
+  background-color: #009879;
+  color: #ffffff;
+  text-align: left;
+}
+
+table th, table td {
+  padding: 12px 15px;
+  border: 1px solid #dddddd;
+}
+
+table tbody tr {
+  border-bottom: 1px solid #dddddd;
+  cursor: default;
+}
+
+table tbody tr:hover {
+  background-color: transparent;
+}
+
+.nested-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+  font-size: 0.9em;
+  background-color: #f9f9f9;
+}
+
+.nested-table thead tr {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+.nested-table th, .nested-table td {
+  padding: 8px 10px;
+  border: 1px solid #cccccc;
+}
+
+.nested-table tbody tr {
+  border-bottom: 1px solid #cccccc;
+  cursor: pointer;
+}
+
+.nested-table tbody tr:nth-of-type(even) {
+  background-color: #dceeda;
+}
+
+.nested-table tbody tr:hover {
+  background-color: #d0efcf;
+  color: #000;
+}
+
+/* Total Trade GP */
+.total-trade-gp {
+  font-size: 1.2em;
+  margin: 20px 0;
+}
+
+/* DataSummary styles */
+.data-summary {
+  margin: 20px 0;
+}
+
+.data-summary table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  font-size: 1em;
+  font-family: 'Arial', sans-serif;
+  min-width: 400px;
+}
+
+.data-summary thead tr {
+  background-color: #002698;
+  color: #ffffff;
+  text-align: left;
+}
+
+.data-summary th, .data-summary td {
+  padding: 12px 15px;
+  border: 1px solid #dddddd;
+}
+
+.data-summary tbody tr {
+  border-bottom: 1px solid #dddddd;
+}
+
+.data-summary tbody tr:nth-of-type(even) {
+  background-color: #f3f3f3;
+}
+
+.data-summary tbody tr:last-of-type {
+  border-bottom: 2px solid #002698;
+}
+
+/* Navigation Styles */
+nav {
+  margin-bottom: 20px;
+}
+
+nav ul {
+  list-style-type: none;
+  padding: 0;
+  text-align: center;
+}
+
+nav ul li {
+  display: inline;
+  margin-right: 15px;
+}
+
+nav ul li a {
+  text-decoration: none;
+  color: #007bff;
+  font-weight: bold;
+}
+
+nav ul li a:hover {
+  text-decoration: underline;
+}
+
+/* Button Styles */
+button, .delete-button, .update-date-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+  margin-top: 20px;
+}
+
+button:hover, .delete-button:hover, .update-date-button:hover {
+  transform: scale(1.05);
+}
+
+.logout-button {
+  background-color: #ff5722; /* Orange color for logout button */
+  color: white;
+}
+
+.logout-button:hover {
+  background-color: #e64a19; /* Darker shade of orange on hover */
+}
+
+.delete-button {
+  background-color: red;
+  color: white;
+  margin-bottom: 20px;
+  margin-right: 10px;
+}
+
+.delete-button:hover {
+  background-color: darkred;
+}
+
+.update-date-button {
+  background-color: #2196F3;
+  color: white;
+  margin-bottom: 20px;
+}
+
+.update-date-button:hover {
+  background-color: #007bff;
+}
+
+/* Summary row colors */
+.summary-row-positive {
+  background-color: #e6f7e6; /* Light green background for positive balance */
+}
+
+.summary-row-negative {
+  background-color: #f7e6e6; /* Light red background for negative balance */
+}
+
+/* Login Page Styles */
+.login-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+}
+
+.login-form {
+  width: 100%;
+  max-width: 400px;
+  background-color: #f9f9f9;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  text-align: center; /* Center-align all form elements */
+}
+
+.login-logo {
+  width: 350px; /* Default size for larger screens */
+  margin-bottom: 20px; /* Add spacing below the logo */
+}
+
+/* Adjustments for smaller screens (iPhone 13 and iPhone 13 Pro) */
+@media screen and (max-width: 430px) {
+  .login-logo {
+    width: 250px; /* Adjust size to prevent overflow */
+  }}
+
+.login-form h2 {
+  margin-bottom: 20px;
+  font-size: 1.5em;
+  color: #333;
+}
+
+.login-form input[type="text"],
+.login-form input[type="password"] {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 16px;
+}
+
+.login-form button {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.login-form button:hover {
+  background-color: #0056b3;
 }

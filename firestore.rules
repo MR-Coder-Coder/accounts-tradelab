@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Allow full read and write access to admin users for all collections
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // Restrict access to 'trial-balance' for non-admin users
+    match /trial-balance/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // Allow full read and write access to users with the 'user' role for all other collections
+    match /{document=**} {
+      allow read, write: if isUser();
+    }
+
+    // Function to check if the user has an admin role
+    function isAdmin() {
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Function to check if the user has a user role
+    function isUser() {
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'user';
+    }
+
+    // Specific rule for users collection: allow users to read/write their own documents
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

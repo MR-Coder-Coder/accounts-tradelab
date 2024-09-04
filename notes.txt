@@ -1,0 +1,304 @@
+THE ORIGINAL APP.JS
+
+import React, { useState, useEffect } from 'react';
+import { db } from './firebase';
+import { collection, getDocs } from 'firebase/firestore';
+import { token_set_ratio } from 'fuzzball';
+
+function App() {
+  const [bookieCount, setBookieCount] = useState(0);
+  const [betfairCount, setBetfairCount] = useState(0);
+  const [betListCount, setBetListCount] = useState(0);
+  const [bookieBalance, setBookieBalance] = useState(0);
+  const [betfairBalance, setBetfairBalance] = useState(0);
+  const [matchedEvents, setMatchedEvents] = useState([]);
+  const [uniqueBookieSelectionCount, setUniqueBookieSelectionCount] = useState(0);
+  const [uniqueMarketEvents, setUniqueMarketEvents] = useState([]);
+  const [winLossCounts, setWinLossCounts] = useState({ eventWins: 0, eventLosses: 0, betWins: 0, betLosses: 0 });
+
+  const parseAmount = (amount) => {
+    if (typeof amount !== 'string') return 0;
+    const isNegative = amount.includes('(');
+    const parsedAmount = parseFloat(amount.replace(/[,\(\)]/g, ''));
+    return isNegative ? -parsedAmount : parsedAmount;
+  };
+
+  const timestampToDate = (timestamp) => {
+    return new Date(timestamp).toISOString().split('T')[0];
+  };
+
+  const fetchData = async (collectionName) => {
+    const snapshot = await getDocs(collection(db, collectionName));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  };
+
+  const matchEvents = (betfairData, bookieData, betListData) => {
+    // Filter out invalid entries in betfairData
+    const validBetfairData = betfairData.filter(betfairRow => 
+      betfairRow.event &&
+      !betfairRow.event.betDescription.includes("Commission") &&
+      betfairRow.averagePrice !== "0.00"
+    );
+
+    // Filter out invalid entries in bookieData
+    const validBookieData = bookieData.filter(bookieRow =>
+      bookieRow.description &&
+      bookieRow.description.selectionName !== "" &&
+      bookieRow.action !== "SETTLE_COMM_ADJ"
+    );
+
+    const matchedEvents = [];
+
+    validBetfairData.forEach(betfairRow => {
+      validBookieData.forEach(bookieRow => {
+        if (bookieRow.description.marketTime && bookieRow.description.eventName) {
+          const betfairDate = betfairRow.formattedSettledDate;
+          const bookieDate = timestampToDate(bookieRow.description.marketTime);
+
+          if (betfairDate === bookieDate) {
+            const betfairEventFullName = betfairRow.event.nameAndSelectionName || '';
+            const bookieEventFullName = bookieRow.description.eventName + (bookieRow.description.selectionName ? ` ${bookieRow.description.selectionName}` : '');
+
+            const similarity = token_set_ratio(betfairEventFullName, bookieEventFullName);
+            if (similarity > 80) {
+              const marketId = bookieRow.description.market;
+              const selectionName = bookieRow.description.selectionName;
+              const betListKey = `${marketId}_${selectionName}`;
+              const averagePrice = betListData[betListKey]?.averagePrice || '';
+              const betListDocId = betListData[betListKey]?.id || '';
+
+              if (averagePrice !== "0.00" && averagePrice !== 0) {
+                const winLose = betfairRow.winLose;
+                const bookieWinLose = winLose === "Won" ? "Lost" : winLose === "Lost" ? "Won" : "";
+
+                matchedEvents.push({
+                  betfair_docId: betfairRow.id,
+                  bookie_docId: bookieRow.id,
+                  betfair_formattedSettledDate: betfairRow.formattedSettledDate,
+                  betfair_nameAndSelectionName: betfairEventFullName,
+                  betfair_averagePrice: betfairRow.averagePrice,
+                  bookie_marketDate: bookieDate,
+                  bookie_eventName: bookieRow.description.eventName,
+                  bookie_market: marketId,
+                  bookie_selectionName: selectionName,
+                  bet_list_averagePrice: averagePrice,
+                  bet_list_docId: betListDocId,
+                  winLose,
+                  bookieWinLose,  // New field for bookieWinLose
+                  similarity
+                });
+              }
+            }
+          }
+        }
+      });
+    });
+
+    return matchedEvents;
+  };
+
+  const countUniqueBookieSelections = (events) => {
+    const uniqueSelections = new Set(events.map(event => event.bookie_market));
+    return uniqueSelections.size;
+  };
+
+  const getUniqueMarketEvents = (events) => {
+    const uniqueMarkets = new Set();
+    const uniqueMarketEvents = [];
+
+    events.forEach(event => {
+      if (!uniqueMarkets.has(event.bookie_market)) {
+        uniqueMarkets.add(event.bookie_market);
+
+        const winExists = events.some(e => e.bookie_market === event.bookie_market && e.bookieWinLose === "Won");
+        const bookieWinLose = winExists ? "Won" : "Lost";
+
+        uniqueMarketEvents.push({
+          ...event,
+          bookieWinLose
+        });
+      }
+    });
+
+    return uniqueMarketEvents;
+  };
+
+  const calculateWinLossCounts = (events, uniqueEvents) => {
+    const eventWins = uniqueEvents.filter(event => event.bookieWinLose === "Won").length;
+    const eventLosses = uniqueEvents.filter(event => event.bookieWinLose === "Lost").length;
+    const betWins = events.filter(event => event.bookieWinLose === "Won").length;
+    const betLosses = events.filter(event => event.bookieWinLose === "Lost").length;
+    return { eventWins, eventLosses, betWins, betLosses };
+  };
+
+  useEffect(() => {
+    const loadData = async () => {
+      const betfairData = await fetchData('betfair-statement');
+      const bookieData = await fetchData('bookie-statement');
+      const betListDataArr = await fetchData('bet-list');
+      const betListData = {};
+      betListDataArr.forEach(data => {
+        if (data.averagePrice !== "0.00" && data.averagePrice !== 0) {
+          const key = `${data.marketId}_${data.selectionName}`;
+          betListData[key] = { id: data.id, averagePrice: data.averagePrice };
+        }
+      });
+
+      setBetfairCount(betfairData.length);
+      setBookieCount(bookieData.length);
+      setBetListCount(betListDataArr.length);
+
+      const totalBookieBalance = bookieData.reduce((sum, data) => sum + (data.pnl || 0), 0);
+      setBookieBalance(totalBookieBalance);
+
+      const betfairBalances = betfairData.reduce((acc, data) => {
+        acc.creditSum += parseAmount(data.creditAmount || '0');
+        acc.debitSum += parseAmount(data.debitAmount || '0');
+        return acc;
+      }, { creditSum: 0, debitSum: 0 });
+
+      setBetfairBalance(betfairBalances.creditSum + betfairBalances.debitSum);
+
+      const matchedEvents = matchEvents(betfairData, bookieData, betListData);
+      const uniqueMarketEvents = getUniqueMarketEvents(matchedEvents);
+      const winLossCounts = calculateWinLossCounts(matchedEvents, uniqueMarketEvents);
+
+      setMatchedEvents(matchedEvents);
+      setUniqueBookieSelectionCount(countUniqueBookieSelections(matchedEvents));
+      setUniqueMarketEvents(uniqueMarketEvents);
+      setWinLossCounts(winLossCounts);
+    };
+
+    loadData();
+  }, []);
+
+  return (
+    <div className="App">
+      <h1>Data from Firestore</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', width: '300px', margin: '0 auto' }}>
+        <div>
+          <h2>Bookie Data</h2>
+          <p>Total Documents: {bookieCount}</p>
+          <p>Total Balance: ${bookieBalance.toFixed(2)}</p>
+        </div>
+        <div>
+          <h2>Betfair Data</h2>
+          <p>Total Documents: {betfairCount}</p>
+          <p>Total Balance: ${betfairBalance.toFixed(2)}</p>
+        </div>
+        <div>
+          <h2>Bet List Data</h2>
+          <p>Total Documents: {betListCount}</p>
+        </div>
+      </div>
+      <div>
+        <h2>Win/Loss Summary</h2>
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>Wins</th>
+              <th>Losses</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Events</td>
+              <td>{winLossCounts.eventWins}</td>
+              <td>{winLossCounts.eventLosses}</td>
+            </tr>
+            <tr>
+              <td>Bets</td>
+              <td>{winLossCounts.betWins}</td>
+              <td>{winLossCounts.betLosses}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h2>Events Settled: {uniqueBookieSelectionCount}</h2>
+      </div>
+      <div>
+        <h2>Events by Row</h2>
+        {uniqueMarketEvents.length > 0 ? (
+          <table>
+            <thead>
+              <tr>
+                <th>Betfair Date</th>
+                <th>Betfair Event</th>
+                <th>Bookie Date</th>
+                <th>Bookie Event</th>
+                <th>Bookie Market</th>
+                <th>Bookie Win/Lose</th> {/* New column for bookieWinLose */}
+              </tr>
+            </thead>
+            <tbody>
+              {uniqueMarketEvents.map((event, index) => (
+                <tr key={index}>
+                  <td>{event.betfair_formattedSettledDate}</td>
+                  <td>{event.betfair_nameAndSelectionName}</td>
+                  <td>{event.bookie_marketDate}</td>
+                  <td>{event.bookie_eventName}</td>
+                  <td>{event.bookie_market}</td>
+                  <td>{event.bookieWinLose}</td> {/* Display bookieWinLose */}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p>No unique market events found.</p>
+        )}
+      </div>
+      <div>
+        <h2>Matched Bets</h2>
+        <p>Total Matched Bets: {matchedEvents.length}</p>
+        {matchedEvents.length > 0 ? (
+          <table>
+            <thead>
+              <tr>
+                <th>Betfair Doc ID</th>
+                <th>Bookie Doc ID</th>
+                <th>Betfair Date</th>
+                <th>Betfair Event</th>
+                <th>Betfair Avg Price</th>
+                <th>Bookie Date</th>
+                <th>Bookie Event</th>
+                <th>Bookie Market</th>
+                <th>Bookie Selection</th>
+                <th>Bet List Avg Price</th>
+                <th>Bet List Doc ID</th>
+                <th>Win/Lose</th>
+                <th>Bookie Win/Lose</th>
+                <th>Similarity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {matchedEvents.map((event, index) => (
+                <tr key={index}>
+                  <td>{event.betfair_docId}</td>
+                  <td>{event.bookie_docId}</td>
+                  <td>{event.betfair_formattedSettledDate}</td>
+                  <td>{event.betfair_nameAndSelectionName}</td>
+                  <td>{event.betfair_averagePrice}</td>
+                  <td>{event.bookie_marketDate}</td>
+                  <td>{event.bookie_eventName}</td>
+                  <td>{event.bookie_market}</td>
+                  <td>{event.bookie_selectionName}</td>
+                  <td>{event.bet_list_averagePrice}</td>
+                  <td>{event.bet_list_docId}</td>
+                  <td>{event.winLose}</td>
+                  <td>{event.bookieWinLose}</td>
+                  <td>{event.similarity}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p>No matched bets found.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default App;
