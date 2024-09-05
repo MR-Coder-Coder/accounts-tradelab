@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase'; // Import the auth object from firebase.js
-import logo from '../assets/TradeLab_Logo_V5.png'; // Import the logo image
+import logo from '../assets/TradeLab_Logo_V6.png'; // Import the logo image
 
 const LoginComponent = ({ onLoginSuccess }) => {
   const [email, setEmail] = useState('');
